@@ -1,0 +1,8 @@
+[Unit]
+Description=Log CPU and Memory to MySQL
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/log_stats/log_stats.env
+ExecStart=/usr/bin/python3 /opt/log_stats/log_stats.py
+WorkingDirectory=/opt/log_stats

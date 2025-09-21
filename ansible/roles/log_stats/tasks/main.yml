@@ -1,0 +1,66 @@
+---
+- name: Ensure Python tools
+  become: true
+  package:
+    name: "{{ (ansible_os_family == 'Debian') | ternary(['python3','python3-venv','python3-pip'], ['python3','python3-pip']) }}"
+    state: present
+
+- name: Create app dir
+  become: true
+  file:
+    path: /opt/log_stats
+    state: directory
+    mode: '0755'
+
+- name: Copy files
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/log_stats/{{ item }}"
+    mode: '0644'
+  loop:
+    - log_stats.py
+    - requirements.txt
+    - init_db.sql
+
+- name: Install Python deps
+  become: true
+  pip:
+    requirements: /opt/log_stats/requirements.txt
+    executable: pip3
+
+- name: Env dir
+  become: true
+  file:
+    path: /etc/log_stats
+    state: directory
+    mode: '0750'
+
+- name: Render env file
+  become: true
+  template:
+    src: log_stats.env.j2
+    dest: /etc/log_stats/log_stats.env
+    mode: '0640'
+
+- name: Install systemd unit & timer
+  become: true
+  template:
+    src: "{{ item.src }}"
+    dest: "/etc/systemd/system/{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - { src: "log-stats.service.j2", dest: "log-stats.service" }
+    - { src: "log-stats.timer.j2",   dest: "log-stats.timer" }
+
+- name: Reload systemd
+  become: true
+  systemd:
+    daemon_reload: true
+
+- name: Enable + start timer
+  become: true
+  systemd:
+    name: log-stats.timer
+    state: started
+    enabled: true
